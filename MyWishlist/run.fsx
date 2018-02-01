@@ -5,8 +5,14 @@ open System.Net
 open System.Net.Http
 open Newtonsoft.Json
 
-type Named = {
+type Wish = {
+    text: string
+    link: string
+}
+
+type Wishlist = {
     name: string
+    wishes: Wish array
 }
 
 let Run(req: HttpRequestMessage, log: TraceWriter) =
@@ -14,20 +20,11 @@ let Run(req: HttpRequestMessage, log: TraceWriter) =
         log.Info(sprintf 
             "F# HTTP trigger function processed a request.")
 
-        // Set name to query string
-        let name =
-            req.GetQueryNameValuePairs()
-            |> Seq.tryFind (fun q -> q.Key = "name")
+        let! data = req.Content.ReadAsStringAsync() |> Async.AwaitTask
 
-        match name with
-        | Some x ->
-            return req.CreateResponse(HttpStatusCode.OK, "Hello " + x.Value);
-        | None ->
-            let! data = req.Content.ReadAsStringAsync() |> Async.AwaitTask
-
-            if not (String.IsNullOrEmpty(data)) then
-                let named = JsonConvert.DeserializeObject<Named>(data)
-                return req.CreateResponse(HttpStatusCode.OK, "Hello " + named.name);
-            else
-                return req.CreateResponse(HttpStatusCode.BadRequest, "Specify a Name value");
+        if not (String.IsNullOrEmpty(data)) then
+            let wishlist = JsonConvert.DeserializeObject<Wishlist>(data)
+            return req.CreateResponse(HttpStatusCode.OK, wishlist);
+        else
+            return req.CreateResponse(HttpStatusCode.BadRequest);
     } |> Async.RunSynchronously
